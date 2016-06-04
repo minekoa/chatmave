@@ -43,6 +43,7 @@ class Markov(object):
     def __init__(self):
         self.dic = {}
         self.starts = set()
+        self.ngram = 4
         self.chain_max = 80
     
     def learning(self, tokens):
@@ -66,41 +67,71 @@ class Markov(object):
             self.addSentence([tok.surface for tok in sentence])
 
     def addSentence(self, tokens):
-        if len(tokens) < 3: return
+        if len(tokens) < self.ngram: return
 
-        pre1, pre2 = tokens[0], tokens[1]
-        self.starts.add(pre1)
+        pre_list = tokens[:self.ngram -1]
+        self.starts.add(pre_list[0])
 
-        for sfx in tokens[2:]:
-            self.add_suffix(pre1, pre2, sfx)
-            pre1, pre2 = pre2, sfx
+        for sfx in tokens[self.ngram-1:]:
+            self.add_suffix(pre_list + [sfx])
+            pre_list = pre_list[1:] + [sfx]
         else:
-            self.add_suffix(pre1,pre2,u'**EOS**')
+            self.add_suffix(pre_list + [u'**EOS**'])
 
-    def add_suffix(self, pre1, pre2, sfx):
-        if not pre1 in self.dic:
-            self.dic[pre1] = {}
-        if not pre2 in self.dic[pre1]:
-            self.dic[pre1][pre2] = set()
-        self.dic[pre1][pre2].add(sfx)
+    def add_suffix(self, ngram_tokens):
+        print 'add:[', 
+        for t in ngram_tokens: print '(%s)' % t,
+        print ']'
+
+        dic_cur = self.dic
+        for tok in ngram_tokens[:-2]:
+            if not tok in dic_cur:
+                dic_cur[tok] = {}
+            dic_cur = dic_cur[tok]
+
+        if not ngram_tokens[-2] in dic_cur:
+            dic_cur[ngram_tokens[-2]] = set()
+        
+        dic_cur[ngram_tokens[-2]].add(ngram_tokens[-1])
         
     def generate(self, keyword):
         if len(self.dic) == 0: return None
-        
-        words = []
-
+       
+        # 初期キーの作成
         pre1 = keyword if keyword in self.dic else random.choice(list(self.starts))
-        pre2 = random.choice(self.dic[pre1].keys())
+        pre_list = self._get_first_prefix(pre1)
+        print 'prelist:[', 
+        for t in pre_list: print '(%s)' % t,
+        print ']'
 
-        words.append(pre1)
-        words.append(pre2)
+        # 返答生成バッファーの初期化
+        words = []
+        for w in pre_list: words.append(w)
 
+        # 文書生成
         for i in range(0, self.chain_max):
-            sfx = random.choice(list(self.dic[pre1][pre2]))
+            sfx = self._get_suffix(pre_list)
             if sfx == u'**EOS**': break
-                
             words.append(sfx)
-            pre1, pre2 = pre2, sfx
+            pre_list = pre_list[1:] + [sfx]
 
         print len(words), '(msg)'
         return ''.join([w.encode('utf-8') for w in words])
+
+    def _get_first_prefix(self, first_word):
+        words = []
+        words.append(first_word)
+
+        dic_cur = self.dic
+        for i in range(0, self.ngram-2):
+            key = words[i]
+            words.append(random.choice(dic_cur[key].keys()))
+            dic_cur = dic_cur[key]
+        return words
+
+    def _get_suffix(self, prefix_list):
+        dic_cur = self.dic
+        for key in prefix_list:
+            dic_cur = dic_cur[key]
+        return random.choice( list(dic_cur) )
+
