@@ -42,7 +42,7 @@ class MaveProxy(object):
         talker   = lst[0]
         filters  = [t for t in lst if len(t) != 0 and t[0] == '#']
         commands = [t for t in lst if len(t) != 0 and t[0] == '!']
-        talk     = [t for t in lst if len(t) != 0 and t[0] != '#' and t[0] != '!']
+        talk     = ';'.join([t for t in lst[1:] if len(t) != 0 and t[0] != '#' and t[0] != '!'])
         return (talker, filters, commands, talk)
 
     def send_message(self, ws, message, filters):
