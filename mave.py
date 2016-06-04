@@ -1,5 +1,4 @@
 #-*- coding:utf-8 -*-
-import os
 from Queue import Queue
 from janome.tokenizer import Tokenizer
 
@@ -11,7 +10,7 @@ class Mave(object):
         self.msg_que = Queue()
         self.tokenizer = Tokenizer()
 
-        self.markov = Markov()
+        self.markov = Markov(ngram=2)
 
     def listenTo(self, message, talker):
         tokens = self.tokenizer.tokenize(message.decode('utf-8'))
@@ -40,11 +39,15 @@ class Mave(object):
 
 
 class Markov(object):
-    def __init__(self):
+    def __init__(self, ngram):
         self.dic = {}
         self.starts = set()
-        self.ngram = 4
+        self.ngram = ngram
         self.chain_max = 80
+
+    #----------------------------------------
+    # 学習
+    #----------------------------------------
     
     def learning(self, tokens):
         # 文ごとに分離
@@ -63,46 +66,46 @@ class Markov(object):
 
         # センテンスを登録
         for sentence in sentence_list:
-#            self.addSentence(sentence)
-            self.addSentence([tok.surface for tok in sentence])
+            self._add_sentence([tok.surface for tok in sentence])
 
-    def addSentence(self, tokens):
-        if len(tokens) < self.ngram: return
+    def _add_sentence(self, tokens):
+        if len(tokens) < (self.ngram +1): return
 
-        pre_list = tokens[:self.ngram -1]
+        pre_list = tokens[:self.ngram]
         self.starts.add(pre_list[0])
 
-        for sfx in tokens[self.ngram-1:]:
-            self.add_suffix(pre_list + [sfx])
+        for sfx in tokens[self.ngram:]:
+            self._add_suffix(pre_list, sfx)
             pre_list = pre_list[1:] + [sfx]
         else:
-            self.add_suffix(pre_list + [u'**EOS**'])
+            self._add_suffix(pre_list, u'**EOS**')
 
-    def add_suffix(self, ngram_tokens):
+    def _add_suffix(self, ngram_tokens, sfx):
         print 'add:[', 
         for t in ngram_tokens: print '(%s)' % t,
-        print ']'
+        print '-> (%s) ]' % sfx
 
         dic_cur = self.dic
-        for tok in ngram_tokens[:-2]:
+        for tok in ngram_tokens[:-1]:
             if not tok in dic_cur:
                 dic_cur[tok] = {}
             dic_cur = dic_cur[tok]
 
-        if not ngram_tokens[-2] in dic_cur:
-            dic_cur[ngram_tokens[-2]] = set()
+        if not ngram_tokens[-1] in dic_cur:
+            dic_cur[ngram_tokens[-1]] = set()
         
-        dic_cur[ngram_tokens[-2]].add(ngram_tokens[-1])
+        dic_cur[ngram_tokens[-1]].add(sfx)
         
+    #----------------------------------------
+    # 文の生成
+    #----------------------------------------
+
     def generate(self, keyword):
         if len(self.dic) == 0: return None
        
         # 初期キーの作成
         pre1 = keyword if keyword in self.dic else random.choice(list(self.starts))
         pre_list = self._get_first_prefix(pre1)
-        print 'prelist:[', 
-        for t in pre_list: print '(%s)' % t,
-        print ']'
 
         # 返答生成バッファーの初期化
         words = []
@@ -123,7 +126,7 @@ class Markov(object):
         words.append(first_word)
 
         dic_cur = self.dic
-        for i in range(0, self.ngram-2):
+        for i in range(0, self.ngram-1):
             key = words[i]
             words.append(random.choice(dic_cur[key].keys()))
             dic_cur = dic_cur[key]
