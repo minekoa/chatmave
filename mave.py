@@ -18,11 +18,12 @@ class Mave(object):
         for tok in tokens:
             print '%10s (%10s) ... %s' % (tok.surface, tok.reading, tok.part_of_speech)
 
-        self.markov.addSentence([tok.surface for tok in tokens])
+        self.markov.learning(tokens)
 
         meishi_list = [tok.surface for tok in tokens 
                        if u'名詞' in tok.part_of_speech.split(',') and
-                          u'一般' in tok.part_of_speech.split(',')  ]
+                          ((u'一般' in tok.part_of_speech.split(',') and  not u'あ' <= tok.surface[0] <= u'ん')
+                           or u'固有名詞' in tok.part_of_speech.split(','))]
 
         key = random.choice(meishi_list) if len(meishi_list) != 0 else None
         rsp = self.markov.generate(key)
@@ -42,8 +43,28 @@ class Markov(object):
     def __init__(self):
         self.dic = {}
         self.starts = set()
-        self.chain_max = 30
+        self.chain_max = 80
     
+    def learning(self, tokens):
+        # 文ごとに分離
+        sentence_list = []
+        buf = []
+        for tok in tokens:
+            buf.append(tok)
+            if (u'句点' in tok.part_of_speech.split(',') or
+                tok.surface == u'！' or
+                tok.surface == u'？'):
+                sentence_list.append(buf)
+                buf = []
+        else:
+            if len(buf) != 0:
+                sentence_list.append(buf)
+
+        # センテンスを登録
+        for sentence in sentence_list:
+#            self.addSentence(sentence)
+            self.addSentence([tok.surface for tok in sentence])
+
     def addSentence(self, tokens):
         if len(tokens) < 3: return
 
@@ -65,7 +86,7 @@ class Markov(object):
         
     def generate(self, keyword):
         if len(self.dic) == 0: return None
-
+        
         words = []
 
         pre1 = keyword if keyword in self.dic else random.choice(list(self.starts))
@@ -81,4 +102,5 @@ class Markov(object):
             words.append(sfx)
             pre1, pre2 = pre2, sfx
 
+        print len(words), '(msg)'
         return ''.join([w.encode('utf-8') for w in words])
