@@ -2,10 +2,12 @@
 import websocket
 import mave
 import time
+import sys, traceback
 
 class MaveProxy(object):
     def __init__(self):
-        self.mave = mave.Mave('メイ')
+        self.mave = mave.Mave(u'メイ')
+        self.mave.wakeUp()
 
     def connectTo(self, url):
         ws = websocket.WebSocketApp(url,
@@ -15,14 +17,14 @@ class MaveProxy(object):
         ws.run_forever()        
 
     def on_error(self, ws, error):
-        print '#!!ERROR!!'
+        print '!!ERROR!!'
         print error
 
     def on_message(self, ws, message):
         try:
             print ">",message
             talker, filters, cmds, talk = self.parse_message(message)
-            if talker == self.mave.name:
+            if talker == self.mave.name.encode('utf-8'):
                 return
 
             self.mave.listenTo(talk, talker)
@@ -33,9 +35,12 @@ class MaveProxy(object):
 
         except Exception as e:
             print e
+            print '-'*60
+            traceback.print_exc(file=sys.stdout)
 
     def on_close(self, ws):
-        pass
+        self.mave.goToBed()
+        print '!!CLOSED!!'
 
     def parse_message(self, message):
         lst = [t.strip() for t in message.split(';')]
@@ -46,7 +51,7 @@ class MaveProxy(object):
         return (talker, filters, commands, talk)
 
     def send_message(self, ws, message, filters):
-        header = ';'.join([self.mave.name] + filters)
+        header = ';'.join([self.mave.name.encode('utf-8')] + filters)
         ws.send('%s;%s' % (header, message))
 
 if __name__ == '__main__':

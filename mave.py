@@ -3,13 +3,27 @@ from Queue import Queue
 from janome.tokenizer import Tokenizer
 from markov_responder import Markov
 
+import random
+
 class Mave(object):
-    def __init__(self, name='メイ'):
+    def __init__(self, name=u'メイ'):
         self.name = name
         self.msg_que = Queue()
         self.tokenizer = Tokenizer()
 
         self.markov = Markov(ngram=2)
+
+    def wakeUp(self):
+        try:
+            self.markov.load(u'mave_%s.json' % self.name)
+        except Exception as e:
+            print 'markov load failure'
+            print e
+            self.markov = Markov(ngram=2)
+
+    def goToBed(self):
+        self.markov.save(u'mave_%s.json' % self.name)
+
 
     def listenTo(self, message, talker):
         tokens = self.tokenizer.tokenize(message.decode('utf-8'))

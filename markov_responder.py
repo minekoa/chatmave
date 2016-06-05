@@ -1,5 +1,6 @@
 #-*- coding:utf-8 -*-
 import random
+import json
 
 class Markov(object):
     def __init__(self, ngram):
@@ -100,3 +101,40 @@ class Markov(object):
         for key in prefix_list:
             dic_cur = dic_cur[key]
         return random.choice( dic_cur )
+
+    #----------------------------------------
+    # 永続化
+    #----------------------------------------
+    def load(self, fname):
+        self._load_markov(fname)
+        self._load_starts(fname+'.starts')
+
+    def _load_markov(self, fname):
+        with open(fname,'r') as f:
+            self.dic = json.loads(f.read(), "utf-8")
+
+    def _load_starts(self, fname):
+        with open(fname,'r') as f:
+            self.starts = set(json.loads(f.read(), "utf-8"))
+
+    def save(self, fname):
+        self._save_markov(fname)
+        self._save_starts(fname+'.starts')
+
+    def _save_markov(self, fname):
+        txt = json.dumps(self.dic,
+                         ensure_ascii=False,
+                         indent=1,
+                         sort_keys=True)
+        with open(fname, 'w') as  f:
+            f.write(txt.encode('utf-8'))
+
+    def _save_starts(self, fname):
+        txt = json.dumps(list(self.starts),
+                         ensure_ascii=False,
+                         indent=1,
+                         sort_keys=True)
+        with open(fname, 'w') as  f:
+            f.write(txt.encode('utf-8'))
+
+
