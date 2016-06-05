@@ -92,9 +92,9 @@ class Markov(object):
             dic_cur = dic_cur[tok]
 
         if not ngram_tokens[-1] in dic_cur:
-            dic_cur[ngram_tokens[-1]] = set()
+            dic_cur[ngram_tokens[-1]] = []
         
-        dic_cur[ngram_tokens[-1]].add(sfx)
+        dic_cur[ngram_tokens[-1]].append(sfx)
         
     #----------------------------------------
     # 文の生成
@@ -136,5 +136,5 @@ class Markov(object):
         dic_cur = self.dic
         for key in prefix_list:
             dic_cur = dic_cur[key]
-        return random.choice( list(dic_cur) )
+        return random.choice( dic_cur )
 
